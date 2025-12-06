@@ -58,12 +58,17 @@ export default function DoctorVerifyPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser()
-      if (!user) throw new Error("User not found")
+
+      console.log("[v0] Doctor verify - User:", user?.id)
+
+      if (!user) throw new Error("User not found - please log in again")
 
       // Create FormData to upload image
       const formData = new FormData()
       formData.append("file", docIdImage)
       formData.append("userId", user.id)
+
+      console.log("[v0] Uploading doctor verification for user:", user.id)
 
       // Upload to your backend
       const uploadResponse = await fetch("/api/doctor/upload-verification", {
@@ -71,8 +76,11 @@ export default function DoctorVerifyPage() {
         body: formData,
       })
 
+      const responseData = await uploadResponse.json()
+      console.log("[v0] Upload response:", responseData)
+
       if (!uploadResponse.ok) {
-        throw new Error("Failed to upload document")
+        throw new Error(responseData.error || "Failed to upload document")
       }
 
       setSuccess(true)
@@ -80,7 +88,9 @@ export default function DoctorVerifyPage() {
         router.push("/auth/sign-up-success")
       }, 2000)
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      const errorMsg = error instanceof Error ? error.message : "An error occurred"
+      console.log("[v0] Doctor verify error:", errorMsg)
+      setError(errorMsg)
     } finally {
       setIsLoading(false)
     }
