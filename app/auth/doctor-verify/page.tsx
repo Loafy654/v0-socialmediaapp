@@ -2,13 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle, Upload } from "lucide-react"
+import { AlertCircle, CheckCircle, Upload, Loader } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 
@@ -16,10 +16,33 @@ export default function DoctorVerifyPage() {
   const [docIdImage, setDocIdImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        console.log("[v0] Auth check on doctor verify page - User:", user?.id)
+        if (!user) {
+          setError("You must be logged in to verify your doctor ID. Redirecting to login...")
+          setTimeout(() => router.push("/auth/login"), 2000)
+        } else {
+          setIsCheckingAuth(false)
+        }
+      } catch (err) {
+        console.log("[v0] Auth check error:", err)
+        setError("Failed to verify your session. Please log in again.")
+        setIsCheckingAuth(false)
+      }
+    }
+    checkAuth()
+  }, [supabase, router])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -59,18 +82,19 @@ export default function DoctorVerifyPage() {
         data: { user },
       } = await supabase.auth.getUser()
 
-      console.log("[v0] Doctor verify - User:", user?.id)
+      console.log("[v0] Doctor verify submit - User:", user?.id)
 
-      if (!user) throw new Error("User not found - please log in again")
+      if (!user) {
+        throw new Error("User not found - please log in again")
+      }
 
-      // Create FormData to upload image
       const formData = new FormData()
       formData.append("file", docIdImage)
       formData.append("userId", user.id)
 
       console.log("[v0] Uploading doctor verification for user:", user.id)
 
-      // Upload to your backend
+      // Upload to backend
       const uploadResponse = await fetch("/api/doctor/upload-verification", {
         method: "POST",
         body: formData,
@@ -86,7 +110,7 @@ export default function DoctorVerifyPage() {
       setSuccess(true)
       setTimeout(() => {
         router.push("/auth/sign-up-success")
-      }, 2000)
+      }, 3000)
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : "An error occurred"
       console.log("[v0] Doctor verify error:", errorMsg)
@@ -94,6 +118,19 @@ export default function DoctorVerifyPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
+        <Card className="w-full max-w-md shadow-lg">
+          <CardContent className="pt-6 flex items-center justify-center">
+            <Loader className="h-8 w-8 animate-spin text-primary" />
+            <p className="ml-2 text-muted-foreground">Verifying your session...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -113,7 +150,7 @@ export default function DoctorVerifyPage() {
               <AlertCircle className="h-4 w-4 text-accent" />
               <AlertDescription>
                 Upload a clear photo of your official medical license or Doctor ID. Our admin team will verify it within
-                24-48 hours.
+                24-48 hours and send confirmation to your email.
               </AlertDescription>
             </Alert>
 
@@ -157,7 +194,8 @@ export default function DoctorVerifyPage() {
               <Alert className="border-success/50 bg-success/10">
                 <CheckCircle className="h-4 w-4 text-success" />
                 <AlertDescription className="text-success">
-                  Document submitted successfully! Redirecting...
+                  Document submitted successfully! A confirmation email will be sent to your email address.
+                  Redirecting...
                 </AlertDescription>
               </Alert>
             )}
@@ -167,7 +205,14 @@ export default function DoctorVerifyPage() {
               className="w-full bg-gradient-to-r from-primary to-accent"
               disabled={isLoading || !docIdImage}
             >
-              {isLoading ? "Uploading..." : "Submit for Verification"}
+              {isLoading ? (
+                <>
+                  <Loader className="h-4 w-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                "Submit for Verification"
+              )}
             </Button>
 
             <p className="text-xs text-center text-muted-foreground">
