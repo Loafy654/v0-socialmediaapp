@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -40,10 +40,18 @@ export default function MessagesPage() {
   const [isSending, setIsSending] = useState(false)
   const [recipientInfo, setRecipientInfo] = useState<OtherUser | null>(null)
   const supabase = createClient()
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
 
   useEffect(() => {
     if (!isValidUUID(recipientId)) {
-      console.log("[v0] Invalid recipient UUID:", recipientId)
       setIsLoading(false)
       return
     }
@@ -66,35 +74,26 @@ export default function MessagesPage() {
           .eq("id", recipientId)
           .single()
 
-        if (recipientError) {
-          console.error("Error fetching recipient:", recipientError)
+        if (recipientError || !recipientData) {
           setIsLoading(false)
           return
-        } else if (recipientData) {
-          setRecipientInfo(recipientData)
         }
 
-        const { data: sent, error: sentError } = await supabase
+        setRecipientInfo(recipientData)
+
+        const { data: sent } = await supabase
           .from("messages")
           .select("*")
           .eq("sender_id", user.id)
           .eq("receiver_id", recipientId)
           .order("created_at", { ascending: true })
 
-        if (sentError) {
-          console.error("Error fetching sent messages:", sentError)
-        }
-
-        const { data: received, error: receivedError } = await supabase
+        const { data: received } = await supabase
           .from("messages")
           .select("*")
           .eq("sender_id", recipientId)
           .eq("receiver_id", user.id)
           .order("created_at", { ascending: true })
-
-        if (receivedError) {
-          console.error("Error fetching received messages:", receivedError)
-        }
 
         const combined = [...(sent || []), ...(received || [])].sort(
           (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
@@ -103,32 +102,46 @@ export default function MessagesPage() {
         setMessages(combined as Message[])
         setIsLoading(false)
 
-        const channel = supabase.channel(`messages:${user.id}:${recipientId}`)
-        channel
-          .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
-            const msg = payload.new as Message
-            console.log("[v0] New message received:", msg)
-
-            if (
-              (msg.sender_id === user.id && msg.receiver_id === recipientId) ||
-              (msg.sender_id === recipientId && msg.receiver_id === user.id)
-            ) {
+        const channel = supabase
+          .channel(`messages:${user.id}:${recipientId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "messages",
+              filter: `sender_id=eq.${recipientId},receiver_id=eq.${user.id}`,
+            },
+            (payload) => {
+              const msg = payload.new as Message
               setMessages((prev) => {
-                if (prev.some((m) => m.id === msg.id)) {
-                  console.log("[v0] Duplicate message detected, skipping")
-                  return prev
-                }
+                if (prev.some((m) => m.id === msg.id)) return prev
                 return [...prev, msg]
               })
-            }
-          })
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "messages",
+              filter: `sender_id=eq.${user.id},receiver_id=eq.${recipientId}`,
+            },
+            (payload) => {
+              const msg = payload.new as Message
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === msg.id)) return prev
+                return [...prev, msg]
+              })
+            },
+          )
           .subscribe()
 
         return () => {
           channel.unsubscribe()
         }
       } catch (error) {
-        console.error("Error:", error)
         setIsLoading(false)
       }
     }
@@ -149,13 +162,11 @@ export default function MessagesPage() {
       })
 
       if (error) {
-        console.error("Error sending message:", error)
         alert("Failed to send message. Please try again.")
       } else {
         setNewMessage("")
       }
     } catch (error) {
-      console.error("Error sending message:", error)
       alert("Failed to send message. Please try again.")
     } finally {
       setIsSending(false)
@@ -164,7 +175,7 @@ export default function MessagesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary/5 to-accent/5">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -172,11 +183,11 @@ export default function MessagesPage() {
 
   if (!recipientInfo) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary/5 to-accent/5">
         <div className="text-center">
           <p className="text-xl mb-4">User not found</p>
           <Link href="/friends">
-            <Button>
+            <Button className="bg-gradient-to-r from-primary to-accent">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Friends
             </Button>
@@ -187,15 +198,15 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto h-screen flex flex-col">
-      <div className="p-4 border-b border-border bg-card flex items-center gap-3">
+    <div className="max-w-2xl mx-auto h-screen flex flex-col bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10">
+      <div className="p-4 border-b border-border bg-gradient-to-r from-card to-secondary/20 flex items-center gap-3 shadow-md">
         <Link href="/friends">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" className="hover:bg-primary/20">
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <div>
-          <h1 className="font-semibold">{recipientInfo?.full_name}</h1>
+          <h1 className="font-semibold text-lg">{recipientInfo?.full_name}</h1>
           <p className="text-xs text-muted-foreground">@{recipientInfo?.username}</p>
         </div>
       </div>
@@ -209,10 +220,10 @@ export default function MessagesPage() {
           messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.sender_id === currentUserId ? "justify-end" : "justify-start"}`}
+              className={`flex ${message.sender_id === currentUserId ? "justify-end" : "justify-start"} animate-slide-in`}
             >
               <div
-                className={`max-w-xs px-4 py-2 rounded-lg ${message.sender_id === currentUserId ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                className={`max-w-xs px-4 py-2 rounded-lg shadow-md ${message.sender_id === currentUserId ? "bg-gradient-to-r from-primary to-accent text-primary-foreground" : "bg-card border border-border"}`}
               >
                 <p className="text-sm">{message.content}</p>
                 <p className="text-xs mt-1 opacity-70">
@@ -222,16 +233,25 @@ export default function MessagesPage() {
             </div>
           ))
         )}
+        <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-border bg-card flex gap-2">
+      <form
+        onSubmit={handleSendMessage}
+        className="p-4 border-t border-border bg-gradient-to-r from-card to-secondary/20 flex gap-2 shadow-lg"
+      >
         <Input
           placeholder="Type a message..."
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           disabled={isSending}
+          className="border-2 border-primary/20 focus:border-primary"
         />
-        <Button type="submit" disabled={isSending || !newMessage.trim()}>
+        <Button
+          type="submit"
+          disabled={isSending || !newMessage.trim()}
+          className="bg-gradient-to-r from-primary to-accent hover:shadow-lg transition-all"
+        >
           {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
         </Button>
       </form>

@@ -108,13 +108,14 @@ export default function SignUpPage() {
 
       if (role === "doctor") {
         const verificationStatus = doctorIdUrl ? "verified" : "unverified"
+        const now = new Date().toISOString()
 
         const { error: verificationError } = await supabase.from("doctor_verifications").insert({
           user_id: authData.user.id,
           doctor_id_image_url: doctorIdUrl,
           status: verificationStatus,
-          submitted_at: doctorIdUrl ? new Date().toISOString() : null,
-          verified_at: doctorIdUrl ? new Date().toISOString() : null,
+          submitted_at: doctorIdUrl ? now : null,
+          verified_at: doctorIdUrl ? now : null,
         })
 
         if (verificationError) {
@@ -126,7 +127,7 @@ export default function SignUpPage() {
             .from("profiles")
             .update({
               is_verified: true,
-              verification_date: new Date().toISOString(),
+              verification_date: now,
             })
             .eq("id", authData.user.id)
         }

@@ -66,6 +66,12 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
     setActiveTab(tab)
   }
 
+  const handleProfileClick = () => {
+    if (userId) {
+      router.push(`/profile/${userId}`)
+    }
+  }
+
   const getDoctorBadge = () => {
     if (userRole !== "doctor") return null
 
@@ -146,7 +152,7 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
             label="Profile"
             isActive={false}
             isOpen={isOpen}
-            onClick={() => userId && router.push(`/profile/${userId}`)}
+            onClick={handleProfileClick}
           />
         )}
       </nav>
@@ -155,7 +161,7 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
         <Button
           variant="outline"
           className="w-full bg-transparent hover:bg-primary/20 transition-all"
-          onClick={() => userId && router.push(`/profile/${userId}`)}
+          onClick={handleProfileClick}
         >
           <User className="h-4 w-4" />
           {isOpen && <span className="ml-2">Profile</span>}

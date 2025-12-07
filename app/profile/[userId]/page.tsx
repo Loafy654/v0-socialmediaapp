@@ -63,8 +63,7 @@ export default function UserProfilePage() {
       return
     }
 
-    if (!isValidUUID(userId)) {
-      console.log("[v0] Invalid UUID format:", userId)
+    if (!userId || !isValidUUID(userId)) {
       setIsLoading(false)
       setProfile(null)
       return
@@ -83,56 +82,50 @@ export default function UserProfilePage() {
           .eq("id", userId)
           .single()
 
-        if (profileError) {
-          console.error("Error fetching profile:", profileError)
-        } else if (profileData) {
-          setProfile(profileData as UserProfile)
+        if (profileError || !profileData) {
+          setProfile(null)
+          setIsLoading(false)
+          return
+        }
 
-          if (profileData.role === "doctor") {
-            const { data: verificationData } = await supabase
-              .from("doctor_verifications")
-              .select("status")
-              .eq("user_id", userId)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle()
+        setProfile(profileData as UserProfile)
 
-            if (verificationData) {
-              setVerificationStatus({
-                status: verificationData.status as "verified" | "pending" | "rejected" | "unverified",
-              })
-            } else {
-              setVerificationStatus({ status: "unverified" })
-            }
+        if (profileData.role === "doctor") {
+          const { data: verificationData } = await supabase
+            .from("doctor_verifications")
+            .select("status")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (verificationData) {
+            setVerificationStatus({
+              status: verificationData.status as "verified" | "pending" | "rejected" | "unverified",
+            })
+          } else {
+            setVerificationStatus({ status: "unverified" })
           }
         }
 
         if (user?.id && user.id !== userId) {
-          const { data: asRequester, error: reqError } = await supabase
+          const { data: asRequester } = await supabase
             .from("friendships")
             .select("*")
             .eq("requester_id", user.id)
             .eq("receiver_id", userId)
             .eq("status", "accepted")
 
-          if (reqError) {
-            console.error("Error checking requester friendship:", reqError)
-          }
-
-          const { data: asReceiver, error: recError } = await supabase
+          const { data: asReceiver } = await supabase
             .from("friendships")
             .select("*")
             .eq("requester_id", userId)
             .eq("receiver_id", user.id)
             .eq("status", "accepted")
 
-          if (recError) {
-            console.error("Error checking receiver friendship:", recError)
-          }
-
           setIsFriend(!!(asRequester?.length || asReceiver?.length))
 
-          const { data: pendingRequest, error: pendingError } = await supabase
+          const { data: pendingRequest } = await supabase
             .from("friendships")
             .select("*")
             .eq("requester_id", user.id)
@@ -140,17 +133,13 @@ export default function UserProfilePage() {
             .eq("status", "pending")
             .maybeSingle()
 
-          if (pendingError) {
-            console.error("Error checking pending request:", pendingError)
-          }
-
           setFriendRequestPending(!!pendingRequest)
         }
 
         setIsLoading(false)
       } catch (error) {
-        console.error("Error:", error)
         setIsLoading(false)
+        setProfile(null)
       }
     }
 
@@ -182,18 +171,34 @@ export default function UserProfilePage() {
       const uploadData = await uploadResponse.json()
       const doctorIdUrl = uploadData.url
 
-      const { error: verificationError } = await supabase
+      const { data: existingVerification } = await supabase
         .from("doctor_verifications")
-        .update({
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (existingVerification) {
+        const { error: verificationError } = await supabase
+          .from("doctor_verifications")
+          .update({
+            doctor_id_image_url: doctorIdUrl,
+            status: "verified",
+            submitted_at: new Date().toISOString(),
+            verified_at: new Date().toISOString(),
+          })
+          .eq("user_id", userId)
+
+        if (verificationError) throw verificationError
+      } else {
+        const { error: verificationError } = await supabase.from("doctor_verifications").insert({
+          user_id: userId,
           doctor_id_image_url: doctorIdUrl,
           status: "verified",
           submitted_at: new Date().toISOString(),
           verified_at: new Date().toISOString(),
         })
-        .eq("user_id", userId)
 
-      if (verificationError) {
-        throw verificationError
+        if (verificationError) throw verificationError
       }
 
       const { error: profileError } = await supabase
@@ -204,9 +209,7 @@ export default function UserProfilePage() {
         })
         .eq("id", userId)
 
-      if (profileError) {
-        throw profileError
-      }
+      if (profileError) throw profileError
 
       setUploadSuccess(true)
       setVerificationStatus({ status: "verified" })
@@ -219,7 +222,6 @@ export default function UserProfilePage() {
         setProfile(updatedProfile as UserProfile)
       }
     } catch (error) {
-      console.error("Error uploading doctor ID:", error)
       setUploadError("Failed to upload ID. Please try again.")
     } finally {
       setIsUploading(false)
@@ -228,7 +230,6 @@ export default function UserProfilePage() {
 
   const handleAddFriend = async () => {
     if (!currentUserId || !isValidUUID(userId)) {
-      console.error("Error adding friend: invalid user ID")
       alert("Cannot send friend request. Invalid user.")
       return
     }
@@ -241,13 +242,11 @@ export default function UserProfilePage() {
       })
 
       if (error) {
-        console.error("Error adding friend:", error)
         alert("Failed to send friend request. Please try again.")
       } else {
         setFriendRequestPending(true)
       }
     } catch (error) {
-      console.error("Error:", error)
       alert("Failed to send friend request. Please try again.")
     }
   }
@@ -262,13 +261,11 @@ export default function UserProfilePage() {
         .eq("receiver_id", userId)
 
       if (error) {
-        console.error("Error canceling request:", error)
         alert("Failed to cancel request. Please try again.")
       } else {
         setFriendRequestPending(false)
       }
     } catch (error) {
-      console.error("Error:", error)
       alert("Failed to cancel request. Please try again.")
     }
   }
