@@ -7,7 +7,7 @@ import { RightPanel } from "./right-panel"
 import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2 } from "lucide-react"
+import { Loader2, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
@@ -156,17 +156,15 @@ export function FeedLayout({ userId }: FeedLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-background pb-16 lg:pb-0">
+    <div className="flex h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userId={userId} />
-      <div className="flex-1 lg:border-l border-border overflow-hidden">
+      <div className="flex-1 border-l border-border overflow-hidden">
         {activeTab === "feed" && <Feed userId={userId} />}
         {activeTab === "messages" && <MessagesTab conversations={conversations} isLoading={isLoadingMessages} />}
         {activeTab === "friends" && <FriendsTab friends={friends} isLoading={isLoadingFriends} userId={userId} />}
         {activeTab === "ai-doctor" && <AIDoctorChat userId={userId} />}
       </div>
-      <div className="hidden xl:block">
-        <RightPanel userId={userId} />
-      </div>
+      <RightPanel userId={userId} />
     </div>
   )
 }
@@ -174,8 +172,10 @@ export function FeedLayout({ userId }: FeedLayoutProps) {
 function MessagesTab({ conversations, isLoading }: { conversations: Conversation[]; isLoading: boolean }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-xl font-bold">Messages</h2>
+      <div className="p-6 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          Messages
+        </h2>
       </div>
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
@@ -184,17 +184,17 @@ function MessagesTab({ conversations, isLoading }: { conversations: Conversation
           </div>
         ) : conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <p className="text-muted-foreground mb-4">No conversations yet</p>
+            <p className="text-lg text-muted-foreground mb-4">No conversations yet</p>
             <p className="text-sm text-muted-foreground">Add a friend and send them a message to start chatting!</p>
           </div>
         ) : (
           <div className="p-4 space-y-2">
             {conversations.map((conversation) => (
               <Link key={conversation.otherUserId} href={`/messages/${conversation.otherUserId}`}>
-                <Card className="p-4 hover:shadow-lg transition-shadow hover:bg-muted/50 cursor-pointer">
+                <Card className="p-4 hover:shadow-xl transition-all hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5 cursor-pointer border-primary/10 animate-slide-in">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold">{conversation.otherUserName}</h3>
+                      <h3 className="font-semibold text-lg">{conversation.otherUserName}</h3>
                       <p className="text-sm text-muted-foreground mb-2">@{conversation.otherUserUsername}</p>
                       <p className="text-sm truncate">{conversation.lastMessage}</p>
                     </div>
@@ -215,8 +215,10 @@ function MessagesTab({ conversations, isLoading }: { conversations: Conversation
 function FriendsTab({ friends, isLoading, userId }: { friends: Friend[]; isLoading: boolean; userId: string }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-xl font-bold">Friends</h2>
+      <div className="p-6 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          Friends
+        </h2>
       </div>
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
@@ -225,29 +227,51 @@ function FriendsTab({ friends, isLoading, userId }: { friends: Friend[]; isLoadi
           </div>
         ) : friends.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <p className="text-muted-foreground mb-4">You haven't added any friends yet</p>
-            <Button variant="outline" onClick={() => window.scrollTo(0, 0)}>
+            <p className="text-lg text-muted-foreground mb-4">You haven't added any friends yet</p>
+            <Button
+              variant="outline"
+              onClick={() => window.scrollTo(0, 0)}
+              className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:shadow-lg transition-all"
+            >
               Find Friends in Feed
             </Button>
           </div>
         ) : (
           <div className="p-4 grid gap-4 grid-cols-1 md:grid-cols-2">
             {friends.map((friend) => (
-              <Card key={friend.id} className="p-4 hover:shadow-lg transition-shadow">
-                <Link href={`/profile/${friend.id}`} className="hover:opacity-80 block mb-3">
-                  <h3 className="font-semibold">{friend.full_name}</h3>
-                  <p className="text-sm text-muted-foreground mb-2">@{friend.username}</p>
+              <Card
+                key={friend.id}
+                className="p-6 hover:shadow-xl transition-all border-primary/10 bg-gradient-to-br from-card to-secondary/5 animate-slide-in"
+              >
+                <Link href={`/profile/${friend.id}`} className="hover:opacity-80 block mb-3 transition-opacity">
+                  <h3 className="font-semibold text-lg">{friend.full_name}</h3>
+                  <p className="text-sm text-muted-foreground mb-3">@{friend.username}</p>
                   <div className="flex items-center gap-2">
                     {friend.role === "doctor" && (
-                      <Badge variant={friend.is_verified ? "default" : "secondary"}>
-                        {friend.is_verified ? "✓ Verified Doctor" : "Unverified Doctor"}
+                      <Badge
+                        className={
+                          friend.is_verified
+                            ? "bg-verified text-verified-foreground flex items-center gap-1"
+                            : "bg-unverified text-unverified-foreground"
+                        }
+                      >
+                        {friend.is_verified ? (
+                          <>
+                            <CheckCircle2 className="h-3 w-3" /> Verified Doctor
+                          </>
+                        ) : (
+                          "Unverified Doctor"
+                        )}
                       </Badge>
                     )}
                     {friend.role === "patient" && <Badge variant="outline">Patient</Badge>}
                   </div>
                 </Link>
                 <Link href={`/messages/${friend.id}`}>
-                  <Button className="w-full" variant="default" size="sm">
+                  <Button
+                    className="w-full bg-gradient-to-r from-primary to-accent hover:shadow-lg transition-all"
+                    size="sm"
+                  >
                     Message
                   </Button>
                 </Link>
@@ -255,24 +279,6 @@ function FriendsTab({ friends, isLoading, userId }: { friends: Friend[]; isLoadi
             ))}
           </div>
         )}
-      </div>
-    </div>
-  )
-}
-
-function AiDoctorTab() {
-  return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-xl font-bold">AI Doctor</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-center justify-center h-full text-center">
-          <p className="text-muted-foreground mb-4">Connect with an AI doctor for assistance</p>
-          <Button variant="outline" onClick={() => console.log("AI Doctor feature coming soon!")}>
-            Consult AI Doctor
-          </Button>
-        </div>
       </div>
     </div>
   )

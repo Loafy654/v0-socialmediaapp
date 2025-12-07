@@ -10,7 +10,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    // Upload to Vercel Blob on the server side (secure)
     const blob = await put(`doctor-ids/${Date.now()}-${file.name}`, file, {
       access: "public",
     })

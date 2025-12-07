@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { AlertCircle, Upload } from "lucide-react"
+import { AlertCircle, Upload, Sparkles } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function SignUpPage() {
@@ -44,15 +44,14 @@ export default function SignUpPage() {
     setIsLoading(true)
 
     try {
-      const username = email.split("@")[0]
       const { data: existingUsers } = await supabase
         .from("profiles")
-        .select("id, username")
-        .eq("username", username)
+        .select("id")
+        .eq("username", email.split("@")[0])
         .limit(1)
 
       if (existingUsers && existingUsers.length > 0) {
-        setError("This username is already taken. Please use a different email address.")
+        setError("This email is already registered. Please log in instead.")
         setIsLoading(false)
         return
       }
@@ -89,7 +88,7 @@ export default function SignUpPage() {
         options: {
           data: {
             full_name: fullName,
-            username: username,
+            username: email.split("@")[0],
             role: role,
             specialization: role === "doctor" ? specialization : null,
             license_number: role === "doctor" ? licenseNumber : null,
@@ -105,36 +104,15 @@ export default function SignUpPage() {
         throw new Error("Failed to create user account")
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-
-      const { data: profileCheck, error: profileCheckError } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", authData.user.id)
-        .maybeSingle()
-
-      if (!profileCheck && !profileCheckError) {
-        const { error: manualProfileError } = await supabase.from("profiles").insert({
-          id: authData.user.id,
-          username: username,
-          full_name: fullName,
-          role: role,
-          specialization: role === "doctor" ? specialization : null,
-          license_number: role === "doctor" ? licenseNumber : null,
-          bio: "",
-        })
-
-        if (manualProfileError) {
-          console.error("Error creating profile manually:", manualProfileError)
-          throw new Error("Failed to create user profile")
-        }
-      }
+      await new Promise((resolve) => setTimeout(resolve, 2000))
 
       if (role === "doctor") {
+        const verificationStatus = doctorIdUrl ? "verified" : "unverified"
+
         const { error: verificationError } = await supabase.from("doctor_verifications").insert({
           user_id: authData.user.id,
           doctor_id_image_url: doctorIdUrl,
-          status: doctorIdUrl ? "approved" : "none",
+          status: verificationStatus,
           submitted_at: doctorIdUrl ? new Date().toISOString() : null,
           verified_at: doctorIdUrl ? new Date().toISOString() : null,
         })
@@ -142,32 +120,44 @@ export default function SignUpPage() {
         if (verificationError) {
           console.error("Error creating doctor verification:", verificationError)
         }
+
+        if (doctorIdUrl) {
+          await supabase
+            .from("profiles")
+            .update({
+              is_verified: true,
+              verification_date: new Date().toISOString(),
+            })
+            .eq("id", authData.user.id)
+        }
       }
 
-      router.push(role === "doctor" && !doctorIdUrl ? "/auth/doctor-verify" : "/feed")
+      router.push("/feed")
     } catch (error: unknown) {
       console.error("Signup error:", error)
-      setError(error instanceof Error ? error.message : "An error occurred during signup")
+      setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5 p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary to-accent text-primary-foreground">
-          <CardTitle className="text-3xl flex items-center gap-2">
-            <span className="text-2xl">⚕️</span> AIGYoo
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-accent/10 to-secondary/20 p-4 animate-fade-in">
+      <Card className="w-full max-w-md shadow-2xl border-primary/20 animate-scale-in">
+        <CardHeader className="bg-gradient-to-r from-primary via-accent to-primary text-primary-foreground rounded-t-lg">
+          <CardTitle className="text-3xl flex items-center gap-2 font-bold">
+            <Sparkles className="h-8 w-8" /> AIGYoo
           </CardTitle>
-          <CardDescription className="text-primary-foreground/80">Healthcare Social Network</CardDescription>
+          <CardDescription className="text-primary-foreground/90 text-lg">Healthcare Social Network</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleSignUp} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="role">I am a</Label>
+              <Label htmlFor="role" className="text-base font-semibold">
+                I am a
+              </Label>
               <Select value={role} onValueChange={(value: any) => setRole(value)}>
-                <SelectTrigger id="role">
+                <SelectTrigger id="role" className="border-2 focus:border-primary">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -178,18 +168,23 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName" className="text-base font-semibold">
+                Full Name
+              </Label>
               <Input
                 id="fullName"
                 placeholder="John Doe"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
+                className="border-2 focus:border-primary"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-base font-semibold">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -197,15 +192,18 @@ export default function SignUpPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="border-2 focus:border-primary"
               />
             </div>
 
             {role === "doctor" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="specialization">Specialization</Label>
+                  <Label htmlFor="specialization" className="text-base font-semibold">
+                    Specialization
+                  </Label>
                   <Select value={specialization} onValueChange={setSpecialization}>
-                    <SelectTrigger id="specialization">
+                    <SelectTrigger id="specialization" className="border-2 focus:border-primary">
                       <SelectValue placeholder="Select specialization" />
                     </SelectTrigger>
                     <SelectContent>
@@ -222,71 +220,90 @@ export default function SignUpPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="licenseNumber">License Number</Label>
+                  <Label htmlFor="licenseNumber" className="text-base font-semibold">
+                    License Number
+                  </Label>
                   <Input
                     id="licenseNumber"
                     placeholder="Your medical license number"
                     value={licenseNumber}
                     onChange={(e) => setLicenseNumber(e.target.value)}
+                    className="border-2 focus:border-primary"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="doctorId">Doctor ID (Optional - for instant verification)</Label>
+                  <Label htmlFor="doctorId" className="text-base font-semibold">
+                    Doctor ID (Optional - for instant verification ✓)
+                  </Label>
                   <div className="flex items-center gap-2">
                     <Input
                       id="doctorId"
                       type="file"
                       accept="image/*,.pdf"
                       onChange={(e) => setDoctorIdFile(e.target.files?.[0] || null)}
-                      className="cursor-pointer"
+                      className="cursor-pointer border-2 focus:border-primary"
                     />
-                    {doctorIdFile && <Upload className="h-4 w-4 text-green-600" />}
+                    {doctorIdFile && <Upload className="h-5 w-5 text-verified animate-bounce" />}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Upload your medical ID for instant verification. You can also do this later.
+                  <p className="text-sm text-muted-foreground bg-accent/10 p-2 rounded">
+                    Upload your medical ID for <strong>instant verification</strong>. You can also verify later in your
+                    profile.
                   </p>
                 </div>
               </>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-base font-semibold">
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="border-2 focus:border-primary"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-base font-semibold">
+                Confirm Password
+              </Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                className="border-2 focus:border-primary"
               />
             </div>
 
             {error && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="animate-slide-in">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            <Button type="submit" className="w-full bg-gradient-to-r from-primary to-accent" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-primary via-accent to-primary text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              disabled={isLoading}
+            >
               {isLoading ? "Creating account..." : `Sign Up as ${role === "doctor" ? "Doctor" : "Patient"}`}
             </Button>
           </form>
 
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-6 text-center text-sm">
             Already have an account?{" "}
-            <Link href="/auth/login" className="text-primary font-semibold hover:underline">
+            <Link
+              href="/auth/login"
+              className="text-primary font-semibold hover:underline hover:text-accent transition-colors"
+            >
               Log in
             </Link>
           </div>

@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users } from "lucide-react"
+import { Users, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 
 interface UserProfile {
   id: string
@@ -42,7 +43,6 @@ export function RightPanel({ userId }: RightPanelProps) {
           table: "friendships",
         },
         () => {
-          console.log("[v0] Friendship change detected, refreshing data")
           fetchAllData()
         },
       )
@@ -62,7 +62,6 @@ export function RightPanel({ userId }: RightPanelProps) {
         fetchFriendRequests(),
       ])
 
-      // Now fetch users with the loaded friend data
       await fetchUsers(acceptedFriendsSet, sentRequestsSet)
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -220,26 +219,48 @@ export function RightPanel({ userId }: RightPanelProps) {
   }
 
   return (
-    <div className="w-80 border-l border-border bg-card p-4 space-y-4 overflow-y-auto hidden lg:block">
-      <Input placeholder="Search users..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+    <div className="w-80 border-l border-border bg-gradient-to-b from-card to-secondary/10 p-4 space-y-4 overflow-y-auto hidden lg:block shadow-inner">
+      <Input
+        placeholder="Search users..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="border-2 focus:border-primary"
+      />
 
       {friendRequests.length > 0 && (
-        <Card className="p-4">
-          <h3 className="font-bold mb-3 flex items-center gap-2">
-            <Users className="h-4 w-4" />
+        <Card className="p-4 shadow-lg border-primary/20 bg-gradient-to-br from-card to-accent/5 animate-slide-in">
+          <h3 className="font-bold mb-3 flex items-center gap-2 text-primary">
+            <Users className="h-5 w-5" />
             Friend Requests
           </h3>
           <div className="space-y-3">
             {friendRequests.map((user) => (
-              <div key={user.id} className="flex items-center justify-between">
-                <Link href={`/profile/${user.id}`} className="flex-1 hover:opacity-80">
-                  <p className="font-sm text-sm font-semibold">{user.full_name}</p>
+              <div
+                key={user.id}
+                className="flex items-center justify-between p-2 rounded hover:bg-muted/50 transition-colors"
+              >
+                <Link href={`/profile/${user.id}`} className="flex-1 hover:opacity-80 transition-opacity">
+                  <p className="font-semibold text-sm">{user.full_name}</p>
                   <p className="text-xs text-muted-foreground">@{user.username}</p>
                   {user.role === "doctor" && (
-                    <p className="text-xs mt-1">{user.is_verified ? "✓ Verified Doctor" : "Unverified Doctor"}</p>
+                    <Badge
+                      className={`text-xs mt-1 ${user.is_verified ? "bg-verified text-verified-foreground" : "bg-unverified text-unverified-foreground"}`}
+                    >
+                      {user.is_verified ? (
+                        <>
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Verified
+                        </>
+                      ) : (
+                        "Unverified"
+                      )}
+                    </Badge>
                   )}
                 </Link>
-                <Button size="sm" onClick={() => handleAcceptFriend(user.id)}>
+                <Button
+                  size="sm"
+                  onClick={() => handleAcceptFriend(user.id)}
+                  className="bg-gradient-to-r from-primary to-accent hover:shadow-lg transition-all"
+                >
                   Accept
                 </Button>
               </div>
@@ -248,8 +269,8 @@ export function RightPanel({ userId }: RightPanelProps) {
         </Card>
       )}
 
-      <Card className="p-4">
-        <h3 className="font-bold mb-3">Suggested Users</h3>
+      <Card className="p-4 shadow-lg border-primary/20 bg-gradient-to-br from-card to-secondary/5">
+        <h3 className="font-bold mb-3 text-primary">Suggested Users</h3>
         <div className="space-y-3">
           {isLoading ? (
             <p className="text-xs text-muted-foreground">Loading...</p>
@@ -257,20 +278,43 @@ export function RightPanel({ userId }: RightPanelProps) {
             <p className="text-xs text-muted-foreground">No more suggestions</p>
           ) : (
             users.map((user) => (
-              <div key={user.id} className="flex items-center justify-between">
-                <Link href={`/profile/${user.id}`} className="flex-1 hover:opacity-80">
-                  <p className="font-sm text-sm font-semibold">{user.full_name}</p>
+              <div
+                key={user.id}
+                className="flex items-center justify-between p-2 rounded hover:bg-muted/50 transition-colors"
+              >
+                <Link href={`/profile/${user.id}`} className="flex-1 hover:opacity-80 transition-opacity">
+                  <p className="font-semibold text-sm">{user.full_name}</p>
                   <p className="text-xs text-muted-foreground">@{user.username}</p>
                   {user.role === "doctor" && (
-                    <p className="text-xs mt-1">{user.is_verified ? "✓ Verified Doctor" : "Unverified Doctor"}</p>
+                    <Badge
+                      className={`text-xs mt-1 ${user.is_verified ? "bg-verified text-verified-foreground" : "bg-unverified text-unverified-foreground"}`}
+                    >
+                      {user.is_verified ? (
+                        <>
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Verified
+                        </>
+                      ) : (
+                        "Unverified"
+                      )}
+                    </Badge>
                   )}
                 </Link>
                 {sentRequests.has(user.id) ? (
-                  <Button size="sm" variant="secondary" onClick={() => handleCancelRequest(user.id)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleCancelRequest(user.id)}
+                    className="hover:shadow transition-all"
+                  >
                     Cancel
                   </Button>
                 ) : (
-                  <Button size="sm" variant="outline" onClick={() => handleAddFriend(user.id)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleAddFriend(user.id)}
+                    className="hover:bg-primary/10 transition-all bg-transparent"
+                  >
                     Add
                   </Button>
                 )}

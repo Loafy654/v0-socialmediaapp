@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { Menu, Home, MessageCircle, Users, LogOut, Shield, User, Stethoscope } from "lucide-react"
+import { Menu, Home, MessageCircle, Users, LogOut, Shield, User, Stethoscope, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 interface SidebarProps {
   activeTab: "feed" | "messages" | "friends" | "ai-doctor"
@@ -20,7 +19,9 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [userRole, setUserRole] = useState<"patient" | "doctor" | null>(null)
   const [isVerified, setIsVerified] = useState(false)
-  const [verificationStatus, setVerificationStatus] = useState<"pending" | "approved" | "rejected" | null>(null)
+  const [verificationStatus, setVerificationStatus] = useState<
+    "pending" | "verified" | "rejected" | "unverified" | null
+  >(null)
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -42,10 +43,12 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
             .eq("user_id", userId)
             .order("created_at", { ascending: false })
             .limit(1)
-            .single()
+            .maybeSingle()
 
           if (verificationData) {
-            setVerificationStatus(verificationData.status as "pending" | "approved" | "rejected")
+            setVerificationStatus(verificationData.status as "pending" | "verified" | "rejected" | "unverified")
+          } else {
+            setVerificationStatus("unverified")
           }
         }
       }
@@ -66,44 +69,45 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
   const getDoctorBadge = () => {
     if (userRole !== "doctor") return null
 
-    if (isVerified && verificationStatus === "approved") {
+    if (isVerified && verificationStatus === "verified") {
       return (
-        <Badge variant="default" className="text-xs mt-1 bg-accent text-accent-foreground">
-          ✓ Verified Doctor
-        </Badge>
+        <Badge className="bg-verified text-verified-foreground text-xs mt-1 flex items-center gap-1">✓ Verified</Badge>
       )
     } else if (verificationStatus === "pending") {
       return (
-        <Badge variant="secondary" className="text-xs mt-1">
-          ⏳ Pending Verification
+        <Badge variant="secondary" className="bg-yellow-500 text-white text-xs mt-1">
+          ⏳ Pending
         </Badge>
       )
     } else if (verificationStatus === "rejected") {
       return (
         <Badge variant="destructive" className="text-xs mt-1">
-          ✗ Verification Rejected
+          ✗ Rejected
         </Badge>
       )
     } else {
-      return (
-        <Badge variant="outline" className="text-xs mt-1">
-          Unverified Doctor
-        </Badge>
-      )
+      return <Badge className="bg-unverified text-unverified-foreground text-xs mt-1">Unverified</Badge>
     }
   }
 
-  const SidebarContent = () => (
-    <>
-      <div className="p-4 border-b border-border">
+  return (
+    <div
+      className={`flex flex-col ${isOpen ? "w-64" : "w-20"} border-r border-border bg-gradient-to-b from-card to-secondary/20 transition-all duration-300 shadow-lg`}
+    >
+      <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              AIGYoo
-            </h1>
-            <p className="text-xs text-muted-foreground mt-1">Healthcare Network</p>
-            {getDoctorBadge()}
-          </div>
+          {isOpen && (
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent flex items-center gap-2">
+                <Sparkles className="h-6 w-6 text-primary" />
+                AIGYoo
+              </h1>
+              {getDoctorBadge()}
+            </div>
+          )}
+          <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="hover:bg-primary/20">
+            <Menu className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
@@ -112,28 +116,28 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
           icon={<Home className="h-5 w-5" />}
           label="Feed"
           isActive={activeTab === "feed"}
-          isOpen={true}
+          isOpen={isOpen}
           onClick={() => handleNavigation("feed")}
         />
         <SidebarButton
           icon={<MessageCircle className="h-5 w-5" />}
           label="Messages"
           isActive={activeTab === "messages"}
-          isOpen={true}
+          isOpen={isOpen}
           onClick={() => handleNavigation("messages")}
         />
         <SidebarButton
           icon={<Users className="h-5 w-5" />}
           label="Friends"
           isActive={activeTab === "friends"}
-          isOpen={true}
+          isOpen={isOpen}
           onClick={() => handleNavigation("friends")}
         />
         <SidebarButton
           icon={<Stethoscope className="h-5 w-5" />}
           label="AI Doctor"
           isActive={activeTab === "ai-doctor"}
-          isOpen={true}
+          isOpen={isOpen}
           onClick={() => handleNavigation("ai-doctor")}
         />
         {userRole === "doctor" && (
@@ -141,88 +145,31 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
             icon={<Shield className="h-5 w-5" />}
             label="Profile"
             isActive={false}
-            isOpen={true}
+            isOpen={isOpen}
             onClick={() => userId && router.push(`/profile/${userId}`)}
           />
         )}
       </nav>
 
-      <div className="p-4 border-t border-border space-y-2">
+      <div className="p-4 border-t border-border space-y-2 bg-gradient-to-r from-primary/5 to-accent/5">
         <Button
           variant="outline"
-          className="w-full justify-start bg-transparent"
+          className="w-full bg-transparent hover:bg-primary/20 transition-all"
           onClick={() => userId && router.push(`/profile/${userId}`)}
         >
-          <User className="h-4 w-4 mr-2" />
-          <span>Profile</span>
+          <User className="h-4 w-4" />
+          {isOpen && <span className="ml-2">Profile</span>}
         </Button>
-        <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-2" />
-          <span>Logout</span>
+        <Button
+          variant="outline"
+          className="w-full bg-transparent hover:bg-destructive/20 transition-all"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          {isOpen && <span className="ml-2">Logout</span>}
         </Button>
       </div>
-    </>
-  )
-
-  return (
-    <>
-      <div className="hidden lg:flex flex-col w-64 border-r border-border bg-card">
-        <SidebarContent />
-      </div>
-
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
-        <div className="flex items-center justify-around p-2">
-          <Button
-            variant={activeTab === "feed" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => handleNavigation("feed")}
-            className="flex-col h-auto py-2 px-3"
-          >
-            <Home className="h-5 w-5" />
-            <span className="text-xs mt-1">Feed</span>
-          </Button>
-          <Button
-            variant={activeTab === "messages" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => handleNavigation("messages")}
-            className="flex-col h-auto py-2 px-3"
-          >
-            <MessageCircle className="h-5 w-5" />
-            <span className="text-xs mt-1">Messages</span>
-          </Button>
-          <Button
-            variant={activeTab === "friends" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => handleNavigation("friends")}
-            className="flex-col h-auto py-2 px-3"
-          >
-            <Users className="h-5 w-5" />
-            <span className="text-xs mt-1">Friends</span>
-          </Button>
-          <Button
-            variant={activeTab === "ai-doctor" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => handleNavigation("ai-doctor")}
-            className="flex-col h-auto py-2 px-3"
-          >
-            <Stethoscope className="h-5 w-5" />
-            <span className="text-xs mt-1">AI</span>
-          </Button>
-
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" className="flex-col h-auto py-2 px-3">
-                <Menu className="h-5 w-5" />
-                <span className="text-xs mt-1">Menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
-              <SidebarContent />
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
-    </>
+    </div>
   )
 }
 
@@ -238,7 +185,7 @@ function SidebarButton({ icon, label, isActive, isOpen, onClick }: SidebarButton
   return (
     <Button
       variant={isActive ? "default" : "ghost"}
-      className={`w-full justify-start ${!isOpen && "justify-center"}`}
+      className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md" : "hover:bg-primary/10"} ${!isOpen && "justify-center"}`}
       onClick={onClick}
     >
       {icon}
