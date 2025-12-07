@@ -17,7 +17,14 @@ interface UserProfile {
   role: "doctor" | "patient"
   is_verified: boolean
   specialization: string | null
+  hospital: string | null
+  years_of_experience: number | null
+  phone_number: string | null
   created_at: string
+}
+
+interface VerificationStatus {
+  status: "verified" | "pending" | "rejected" | "none"
 }
 
 function isValidUUID(str: string): boolean {
@@ -34,6 +41,7 @@ export default function UserProfilePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isFriend, setIsFriend] = useState(false)
   const [friendRequestPending, setFriendRequestPending] = useState(false)
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -71,6 +79,22 @@ export default function UserProfilePage() {
           console.error("Error fetching profile:", profileError)
         } else if (profileData) {
           setProfile(profileData as UserProfile)
+
+          if (profileData.role === "doctor") {
+            const { data: verificationData } = await supabase
+              .from("doctor_verifications")
+              .select("status")
+              .eq("user_id", userId)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            if (verificationData) {
+              setVerificationStatus({ status: verificationData.status as "verified" | "pending" | "rejected" })
+            } else {
+              setVerificationStatus({ status: "none" })
+            }
+          }
         }
 
         if (user?.id && user.id !== userId) {
@@ -196,6 +220,37 @@ export default function UserProfilePage() {
 
   const isOwnProfile = currentUserId === userId
 
+  const getDoctorBadge = () => {
+    if (profile.role !== "doctor") {
+      return <Badge variant="outline">Patient</Badge>
+    }
+
+    if (!verificationStatus) {
+      return <Badge variant="secondary">Doctor</Badge>
+    }
+
+    switch (verificationStatus.status) {
+      case "verified":
+        return (
+          <Badge variant="default" className="bg-green-600">
+            ✓ Verified Doctor
+          </Badge>
+        )
+      case "pending":
+        return (
+          <Badge variant="secondary" className="bg-yellow-600">
+            ⏳ Pending Verification
+          </Badge>
+        )
+      case "rejected":
+        return <Badge variant="destructive">✗ Verification Rejected</Badge>
+      case "none":
+        return <Badge variant="secondary">Unverified Doctor</Badge>
+      default:
+        return <Badge variant="secondary">Doctor</Badge>
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto p-4">
       <Link href="/feed" className="mb-4 inline-block">
@@ -212,14 +267,7 @@ export default function UserProfilePage() {
               <h1 className="text-3xl font-bold">{profile.full_name}</h1>
               <p className="text-muted-foreground">@{profile.username}</p>
             </div>
-            <div className="flex gap-2">
-              {profile.role === "doctor" && (
-                <Badge variant={profile.is_verified ? "default" : "secondary"}>
-                  {profile.is_verified ? "✓ Verified Doctor" : "Unverified Doctor"}
-                </Badge>
-              )}
-              {profile.role === "patient" && <Badge variant="outline">Patient</Badge>}
-            </div>
+            <div className="flex gap-2">{getDoctorBadge()}</div>
           </div>
 
           {profile.bio && (
@@ -229,10 +277,32 @@ export default function UserProfilePage() {
             </div>
           )}
 
-          {profile.role === "doctor" && profile.specialization && (
-            <div>
-              <h3 className="font-semibold mb-2">Specialization</h3>
-              <p className="text-muted-foreground">{profile.specialization}</p>
+          {profile.role === "doctor" && (
+            <div className="space-y-4">
+              {profile.specialization && (
+                <div>
+                  <h3 className="font-semibold mb-2">Specialization</h3>
+                  <p className="text-muted-foreground">{profile.specialization}</p>
+                </div>
+              )}
+              {profile.hospital && (
+                <div>
+                  <h3 className="font-semibold mb-2">Hospital / Clinic</h3>
+                  <p className="text-muted-foreground">{profile.hospital}</p>
+                </div>
+              )}
+              {profile.years_of_experience && (
+                <div>
+                  <h3 className="font-semibold mb-2">Years of Experience</h3>
+                  <p className="text-muted-foreground">{profile.years_of_experience} years</p>
+                </div>
+              )}
+              {profile.phone_number && (
+                <div>
+                  <h3 className="font-semibold mb-2">Contact</h3>
+                  <p className="text-muted-foreground">{profile.phone_number}</p>
+                </div>
+              )}
             </div>
           )}
 

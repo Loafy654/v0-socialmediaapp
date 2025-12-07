@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Upload } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function SignUpPage() {
@@ -21,6 +21,7 @@ export default function SignUpPage() {
   const [role, setRole] = useState<"patient" | "doctor">("patient")
   const [specialization, setSpecialization] = useState("")
   const [licenseNumber, setLicenseNumber] = useState("")
+  const [doctorIdFile, setDoctorIdFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -43,14 +44,52 @@ export default function SignUpPage() {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: existingUsers } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", email.split("@")[0])
+        .limit(1)
+
+      if (existingUsers && existingUsers.length > 0) {
+        setError("This email is already registered. Please log in instead.")
+        setIsLoading(false)
+        return
+      }
+
+      let doctorIdUrl = null
+
+      if (role === "doctor" && doctorIdFile) {
+        try {
+          const formData = new FormData()
+          formData.append("file", doctorIdFile)
+
+          const uploadResponse = await fetch("/api/upload-doctor-id", {
+            method: "POST",
+            body: formData,
+          })
+
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload doctor ID")
+          }
+
+          const uploadData = await uploadResponse.json()
+          doctorIdUrl = uploadData.url
+        } catch (uploadError) {
+          console.error("Error uploading doctor ID:", uploadError)
+          setError("Failed to upload doctor ID. Please try again.")
+          setIsLoading(false)
+          return
+        }
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
             username: email.split("@")[0],
-            role,
+            role: role,
             specialization: role === "doctor" ? specialization : null,
             license_number: role === "doctor" ? licenseNumber : null,
           },
@@ -58,9 +97,32 @@ export default function SignUpPage() {
             process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
         },
       })
-      if (error) throw error
-      router.push(role === "doctor" ? "/auth/doctor-verify" : "/auth/sign-up-success")
+
+      if (authError) throw authError
+
+      if (!authData.user) {
+        throw new Error("Failed to create user account")
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      if (role === "doctor") {
+        const { error: verificationError } = await supabase.from("doctor_verifications").insert({
+          user_id: authData.user.id,
+          doctor_id_image_url: doctorIdUrl,
+          status: doctorIdUrl ? "verified" : "none",
+          submitted_at: doctorIdUrl ? new Date().toISOString() : null,
+          verified_at: doctorIdUrl ? new Date().toISOString() : null,
+        })
+
+        if (verificationError) {
+          console.error("Error creating doctor verification:", verificationError)
+        }
+      }
+
+      router.push(role === "doctor" && !doctorIdUrl ? "/auth/doctor-verify" : "/feed")
     } catch (error: unknown) {
+      console.error("Signup error:", error)
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
       setIsLoading(false)
@@ -143,6 +205,23 @@ export default function SignUpPage() {
                     value={licenseNumber}
                     onChange={(e) => setLicenseNumber(e.target.value)}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="doctorId">Doctor ID (Optional - for instant verification)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="doctorId"
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setDoctorIdFile(e.target.files?.[0] || null)}
+                      className="cursor-pointer"
+                    />
+                    {doctorIdFile && <Upload className="h-4 w-4 text-green-600" />}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Upload your medical ID for instant verification. You can also do this later.
+                  </p>
                 </div>
               </>
             )}

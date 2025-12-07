@@ -109,8 +109,8 @@ export default function DoctorVerifyPage() {
 
       setSuccess(true)
       setTimeout(() => {
-        router.push("/auth/sign-up-success")
-      }, 3000)
+        router.push("/feed")
+      }, 2000)
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : "An error occurred"
       console.log("[v0] Doctor verify error:", errorMsg)

@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
+import { AIDoctorChat } from "@/components/ai-doctor/ai-doctor-chat"
 
 interface FeedLayoutProps {
   userId: string
@@ -34,7 +35,7 @@ interface Conversation {
 }
 
 export function FeedLayout({ userId }: FeedLayoutProps) {
-  const [activeTab, setActiveTab] = useState<"feed" | "messages" | "friends">("feed")
+  const [activeTab, setActiveTab] = useState<"feed" | "messages" | "friends" | "ai-doctor">("feed")
   const [friends, setFriends] = useState<Friend[]>([])
   const [isLoadingFriends, setIsLoadingFriends] = useState(false)
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -161,6 +162,7 @@ export function FeedLayout({ userId }: FeedLayoutProps) {
         {activeTab === "feed" && <Feed userId={userId} />}
         {activeTab === "messages" && <MessagesTab conversations={conversations} isLoading={isLoadingMessages} />}
         {activeTab === "friends" && <FriendsTab friends={friends} isLoading={isLoadingFriends} userId={userId} />}
+        {activeTab === "ai-doctor" && <AIDoctorChat userId={userId} />}
       </div>
       <RightPanel userId={userId} />
     </div>
@@ -251,6 +253,24 @@ function FriendsTab({ friends, isLoading, userId }: { friends: Friend[]; isLoadi
             ))}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function AiDoctorTab() {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b border-border">
+        <h2 className="text-xl font-bold">AI Doctor</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col items-center justify-center h-full text-center">
+          <p className="text-muted-foreground mb-4">Connect with an AI doctor for assistance</p>
+          <Button variant="outline" onClick={() => console.log("AI Doctor feature coming soon!")}>
+            Consult AI Doctor
+          </Button>
+        </div>
       </div>
     </div>
   )
