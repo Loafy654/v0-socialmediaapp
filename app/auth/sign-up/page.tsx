@@ -44,14 +44,15 @@ export default function SignUpPage() {
     setIsLoading(true)
 
     try {
+      const username = email.split("@")[0]
       const { data: existingUsers } = await supabase
         .from("profiles")
-        .select("id")
-        .eq("username", email.split("@")[0])
+        .select("id, username")
+        .eq("username", username)
         .limit(1)
 
       if (existingUsers && existingUsers.length > 0) {
-        setError("This email is already registered. Please log in instead.")
+        setError("This username is already taken. Please use a different email address.")
         setIsLoading(false)
         return
       }
@@ -88,7 +89,7 @@ export default function SignUpPage() {
         options: {
           data: {
             full_name: fullName,
-            username: email.split("@")[0],
+            username: username,
             role: role,
             specialization: role === "doctor" ? specialization : null,
             license_number: role === "doctor" ? licenseNumber : null,
@@ -104,7 +105,30 @@ export default function SignUpPage() {
         throw new Error("Failed to create user account")
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      await new Promise((resolve) => setTimeout(resolve, 3000))
+
+      const { data: profileCheck, error: profileCheckError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", authData.user.id)
+        .maybeSingle()
+
+      if (!profileCheck && !profileCheckError) {
+        const { error: manualProfileError } = await supabase.from("profiles").insert({
+          id: authData.user.id,
+          username: username,
+          full_name: fullName,
+          role: role,
+          specialization: role === "doctor" ? specialization : null,
+          license_number: role === "doctor" ? licenseNumber : null,
+          bio: "",
+        })
+
+        if (manualProfileError) {
+          console.error("Error creating profile manually:", manualProfileError)
+          throw new Error("Failed to create user profile")
+        }
+      }
 
       if (role === "doctor") {
         const { error: verificationError } = await supabase.from("doctor_verifications").insert({
@@ -123,7 +147,7 @@ export default function SignUpPage() {
       router.push(role === "doctor" && !doctorIdUrl ? "/auth/doctor-verify" : "/feed")
     } catch (error: unknown) {
       console.error("Signup error:", error)
-      setError(error instanceof Error ? error.message : "An error occurred")
+      setError(error instanceof Error ? error.message : "An error occurred during signup")
     } finally {
       setIsLoading(false)
     }

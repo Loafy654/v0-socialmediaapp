@@ -56,7 +56,7 @@ export default function UserProfilePage() {
     }
 
     if (!isValidUUID(userId)) {
-      console.log("[v0] Invalid UUID format:", userId)
+      console.error("Invalid user ID format:", userId)
       setIsLoading(false)
       setProfile(null)
       return
@@ -73,11 +73,15 @@ export default function UserProfilePage() {
           .from("profiles")
           .select("*")
           .eq("id", userId)
-          .single()
+          .maybeSingle()
 
         if (profileError) {
           console.error("Error fetching profile:", profileError)
-        } else if (profileData) {
+          setProfile(null)
+        } else if (!profileData) {
+          console.error("Profile not found for user:", userId)
+          setProfile(null)
+        } else {
           setProfile(profileData as UserProfile)
 
           if (profileData.role === "doctor") {
@@ -97,7 +101,7 @@ export default function UserProfilePage() {
           }
         }
 
-        if (user?.id && user.id !== userId) {
+        if (user?.id && user.id !== userId && profileData) {
           const { data: asRequester, error: reqError } = await supabase
             .from("friendships")
             .select("*")
@@ -139,7 +143,8 @@ export default function UserProfilePage() {
 
         setIsLoading(false)
       } catch (error) {
-        console.error("Error:", error)
+        console.error("Error loading profile:", error)
+        setProfile(null)
         setIsLoading(false)
       }
     }
