@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Menu, Home, MessageCircle, Users, LogOut, Shield, User, Stethoscope } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 interface SidebarProps {
   activeTab: "feed" | "messages" | "friends" | "ai-doctor"
@@ -19,7 +20,7 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [userRole, setUserRole] = useState<"patient" | "doctor" | null>(null)
   const [isVerified, setIsVerified] = useState(false)
-  const [verificationStatus, setVerificationStatus] = useState<"pending" | "verified" | "rejected" | null>(null)
+  const [verificationStatus, setVerificationStatus] = useState<"pending" | "approved" | "rejected" | null>(null)
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -44,7 +45,7 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
             .single()
 
           if (verificationData) {
-            setVerificationStatus(verificationData.status as "pending" | "verified" | "rejected")
+            setVerificationStatus(verificationData.status as "pending" | "approved" | "rejected")
           }
         }
       }
@@ -65,9 +66,9 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
   const getDoctorBadge = () => {
     if (userRole !== "doctor") return null
 
-    if (isVerified && verificationStatus === "verified") {
+    if (isVerified && verificationStatus === "approved") {
       return (
-        <Badge variant="default" className="text-xs mt-1">
+        <Badge variant="default" className="text-xs mt-1 bg-accent text-accent-foreground">
           ✓ Verified Doctor
         </Badge>
       )
@@ -92,23 +93,17 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
     }
   }
 
-  return (
-    <div
-      className={`flex flex-col ${isOpen ? "w-64" : "w-20"} border-r border-border bg-card transition-all duration-300`}
-    >
+  const SidebarContent = () => (
+    <>
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
-          {isOpen && (
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                AIGYoo
-              </h1>
-              {getDoctorBadge()}
-            </div>
-          )}
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
-            <Menu className="h-5 w-5" />
-          </Button>
+          <div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+              AIGYoo
+            </h1>
+            <p className="text-xs text-muted-foreground mt-1">Healthcare Network</p>
+            {getDoctorBadge()}
+          </div>
         </div>
       </div>
 
@@ -117,28 +112,28 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
           icon={<Home className="h-5 w-5" />}
           label="Feed"
           isActive={activeTab === "feed"}
-          isOpen={isOpen}
+          isOpen={true}
           onClick={() => handleNavigation("feed")}
         />
         <SidebarButton
           icon={<MessageCircle className="h-5 w-5" />}
           label="Messages"
           isActive={activeTab === "messages"}
-          isOpen={isOpen}
+          isOpen={true}
           onClick={() => handleNavigation("messages")}
         />
         <SidebarButton
           icon={<Users className="h-5 w-5" />}
           label="Friends"
           isActive={activeTab === "friends"}
-          isOpen={isOpen}
+          isOpen={true}
           onClick={() => handleNavigation("friends")}
         />
         <SidebarButton
           icon={<Stethoscope className="h-5 w-5" />}
           label="AI Doctor"
           isActive={activeTab === "ai-doctor"}
-          isOpen={isOpen}
+          isOpen={true}
           onClick={() => handleNavigation("ai-doctor")}
         />
         {userRole === "doctor" && (
@@ -146,7 +141,7 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
             icon={<Shield className="h-5 w-5" />}
             label="Profile"
             isActive={false}
-            isOpen={isOpen}
+            isOpen={true}
             onClick={() => userId && router.push(`/profile/${userId}`)}
           />
         )}
@@ -155,18 +150,79 @@ export function Sidebar({ activeTab, setActiveTab, userId }: SidebarProps) {
       <div className="p-4 border-t border-border space-y-2">
         <Button
           variant="outline"
-          className="w-full bg-transparent"
+          className="w-full justify-start bg-transparent"
           onClick={() => userId && router.push(`/profile/${userId}`)}
         >
-          <User className="h-4 w-4" />
-          {isOpen && <span className="ml-2">Profile</span>}
+          <User className="h-4 w-4 mr-2" />
+          <span>Profile</span>
         </Button>
-        <Button variant="outline" className="w-full bg-transparent" onClick={handleLogout}>
-          <LogOut className="h-4 w-4" />
-          {isOpen && <span className="ml-2">Logout</span>}
+        <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleLogout}>
+          <LogOut className="h-4 w-4 mr-2" />
+          <span>Logout</span>
         </Button>
       </div>
-    </div>
+    </>
+  )
+
+  return (
+    <>
+      <div className="hidden lg:flex flex-col w-64 border-r border-border bg-card">
+        <SidebarContent />
+      </div>
+
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
+        <div className="flex items-center justify-around p-2">
+          <Button
+            variant={activeTab === "feed" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => handleNavigation("feed")}
+            className="flex-col h-auto py-2 px-3"
+          >
+            <Home className="h-5 w-5" />
+            <span className="text-xs mt-1">Feed</span>
+          </Button>
+          <Button
+            variant={activeTab === "messages" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => handleNavigation("messages")}
+            className="flex-col h-auto py-2 px-3"
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span className="text-xs mt-1">Messages</span>
+          </Button>
+          <Button
+            variant={activeTab === "friends" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => handleNavigation("friends")}
+            className="flex-col h-auto py-2 px-3"
+          >
+            <Users className="h-5 w-5" />
+            <span className="text-xs mt-1">Friends</span>
+          </Button>
+          <Button
+            variant={activeTab === "ai-doctor" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => handleNavigation("ai-doctor")}
+            className="flex-col h-auto py-2 px-3"
+          >
+            <Stethoscope className="h-5 w-5" />
+            <span className="text-xs mt-1">AI</span>
+          </Button>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="sm" className="flex-col h-auto py-2 px-3">
+                <Menu className="h-5 w-5" />
+                <span className="text-xs mt-1">Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-0">
+              <SidebarContent />
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -182,7 +238,7 @@ function SidebarButton({ icon, label, isActive, isOpen, onClick }: SidebarButton
   return (
     <Button
       variant={isActive ? "default" : "ghost"}
-      className={`w-full justify-start ${!isOpen && "p-0"}`}
+      className={`w-full justify-start ${!isOpen && "justify-center"}`}
       onClick={onClick}
     >
       {icon}

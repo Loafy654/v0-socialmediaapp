@@ -110,7 +110,7 @@ export default function SignUpPage() {
         const { error: verificationError } = await supabase.from("doctor_verifications").insert({
           user_id: authData.user.id,
           doctor_id_image_url: doctorIdUrl,
-          status: doctorIdUrl ? "verified" : "none",
+          status: doctorIdUrl ? "approved" : "none",
           submitted_at: doctorIdUrl ? new Date().toISOString() : null,
           verified_at: doctorIdUrl ? new Date().toISOString() : null,
         })

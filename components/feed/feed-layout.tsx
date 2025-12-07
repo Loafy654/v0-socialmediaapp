@@ -156,15 +156,17 @@ export function FeedLayout({ userId }: FeedLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background pb-16 lg:pb-0">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userId={userId} />
-      <div className="flex-1 border-l border-border overflow-hidden">
+      <div className="flex-1 lg:border-l border-border overflow-hidden">
         {activeTab === "feed" && <Feed userId={userId} />}
         {activeTab === "messages" && <MessagesTab conversations={conversations} isLoading={isLoadingMessages} />}
         {activeTab === "friends" && <FriendsTab friends={friends} isLoading={isLoadingFriends} userId={userId} />}
         {activeTab === "ai-doctor" && <AIDoctorChat userId={userId} />}
       </div>
-      <RightPanel userId={userId} />
+      <div className="hidden xl:block">
+        <RightPanel userId={userId} />
+      </div>
     </div>
   )
 }

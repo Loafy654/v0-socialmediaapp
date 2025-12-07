@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Stethoscope } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function LoginPage() {
@@ -40,20 +40,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5 p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary to-accent text-primary-foreground">
-          <CardTitle className="text-3xl flex items-center gap-2">
-            <span className="text-2xl">⚕️</span> AIGYoo
-          </CardTitle>
-          <CardDescription className="text-primary-foreground/80">
-            Welcome back to healthcare connection
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+      <Card className="w-full max-w-md shadow-2xl border-2">
+        <CardHeader className="space-y-3 bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-t-lg p-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+              <Stethoscope className="h-8 w-8" />
+            </div>
+            <div>
+              <CardTitle className="text-3xl font-bold">AIGYoo</CardTitle>
+              <p className="text-sm text-primary-foreground/90">Healthcare Network</p>
+            </div>
+          </div>
+          <CardDescription className="text-primary-foreground/90 text-base">
+            Connect with trusted healthcare professionals
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 p-6">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -61,16 +69,21 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="h-11"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm font-medium">
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
+                placeholder="Enter your password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="h-11"
               />
             </div>
             {error && (
@@ -79,12 +92,16 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" className="w-full bg-gradient-to-r from-primary to-accent" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full h-11 text-base font-semibold bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+              disabled={isLoading}
+            >
               {isLoading ? "Logging in..." : "Log In"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            Don't have an account?{" "}
+          <div className="mt-6 text-center text-sm">
+            <span className="text-muted-foreground">Don't have an account? </span>
             <Link href="/auth/sign-up" className="text-primary font-semibold hover:underline">
               Sign up
             </Link>

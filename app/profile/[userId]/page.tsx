@@ -24,7 +24,7 @@ interface UserProfile {
 }
 
 interface VerificationStatus {
-  status: "verified" | "pending" | "rejected" | "none"
+  status: "approved" | "pending" | "rejected" | "none"
 }
 
 function isValidUUID(str: string): boolean {
@@ -90,7 +90,7 @@ export default function UserProfilePage() {
               .maybeSingle()
 
             if (verificationData) {
-              setVerificationStatus({ status: verificationData.status as "verified" | "pending" | "rejected" })
+              setVerificationStatus({ status: verificationData.status as "approved" | "pending" | "rejected" })
             } else {
               setVerificationStatus({ status: "none" })
             }
@@ -230,7 +230,7 @@ export default function UserProfilePage() {
     }
 
     switch (verificationStatus.status) {
-      case "verified":
+      case "approved":
         return (
           <Badge variant="default" className="bg-green-600">
             ✓ Verified Doctor

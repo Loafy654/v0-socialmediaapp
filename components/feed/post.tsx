@@ -128,81 +128,90 @@ export function Post({ post, currentUserId, onPostUpdated }: PostProps) {
   }
 
   return (
-    <Card className="m-4 p-4">
-      <div className="space-y-4">
+    <Card className="m-2 md:m-4 p-3 md:p-4 hover:shadow-lg transition-shadow">
+      <div className="space-y-3 md:space-y-4">
         {/* Post Header */}
-        <div className="flex items-center justify-between">
-          <Link href={`/profile/${post.user_id}`} className="hover:opacity-80 flex-1">
-            <div className="flex items-center gap-2">
-              <div>
-                <p className="font-semibold">{post.profiles.full_name || post.profiles.username}</p>
-                <p className="text-xs text-muted-foreground">
+        <div className="flex items-start justify-between gap-2">
+          <Link href={`/profile/${post.user_id}`} className="hover:opacity-80 flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <div className="min-w-0">
+                <p className="font-semibold text-sm md:text-base truncate">
+                  {post.profiles.full_name || post.profiles.username}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
                   @{post.profiles.username} · {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                 </p>
               </div>
               {post.profiles.role === "doctor" && (
-                <Badge variant={post.profiles.is_verified ? "default" : "secondary"} className="ml-auto">
+                <Badge
+                  variant={post.profiles.is_verified ? "default" : "secondary"}
+                  className="text-xs shrink-0 bg-accent text-accent-foreground"
+                >
                   {post.profiles.is_verified ? "✓ Verified" : "Unverified"}
                 </Badge>
               )}
             </div>
           </Link>
           {post.user_id === currentUserId && (
-            <Button variant="ghost" size="sm" onClick={handleDeletePost}>
+            <Button variant="ghost" size="sm" onClick={handleDeletePost} className="shrink-0">
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           )}
         </div>
 
         {/* Post Content */}
-        <p className="text-base">{post.content}</p>
+        <p className="text-sm md:text-base leading-relaxed">{post.content}</p>
 
         {/* Like and Comment Actions */}
-        <div className="flex gap-4 pt-4 border-t border-border text-muted-foreground">
+        <div className="flex gap-2 md:gap-4 pt-3 md:pt-4 border-t border-border text-muted-foreground">
           <Button variant="ghost" size="sm" onClick={handleLike} className={isLiked ? "text-destructive" : ""}>
             <Heart className={`h-4 w-4 ${isLiked ? "fill-destructive" : ""}`} />
-            <span className="ml-2">{likeCount}</span>
+            <span className="ml-1 md:ml-2 text-xs md:text-sm">{likeCount}</span>
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowComments(!showComments)}>
             <MessageCircle className="h-4 w-4" />
-            <span className="ml-2">{comments.length}</span>
+            <span className="ml-1 md:ml-2 text-xs md:text-sm">{comments.length}</span>
           </Button>
         </div>
 
         {/* Comments Section */}
         {showComments && (
-          <div className="space-y-4 border-t border-border pt-4">
+          <div className="space-y-3 md:space-y-4 border-t border-border pt-3 md:pt-4">
             <form onSubmit={handleCommentSubmit} className="flex gap-2">
               <Input
                 placeholder="Write a comment..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 disabled={isLoading}
+                className="text-sm"
               />
               <Button type="submit" size="sm" disabled={isLoading || !newComment.trim()}>
                 {isLoading ? "..." : "Post"}
               </Button>
             </form>
 
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {comments.map((comment) => (
-                <div key={comment.id} className="p-3 bg-muted rounded">
+                <div key={comment.id} className="p-2 md:p-3 bg-muted rounded-lg">
                   <Link href={`/profile/${comment.profiles.id}`} className="hover:opacity-80">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-sm font-semibold text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-xs md:text-sm truncate">
                           {comment.profiles.full_name || comment.profiles.username}
                         </p>
-                        <p className="text-sm text-muted-foreground">@{comment.profiles.username}</p>
+                        <p className="text-xs text-muted-foreground truncate">@{comment.profiles.username}</p>
                       </div>
                       {comment.profiles.role === "doctor" && (
-                        <Badge variant={comment.profiles.is_verified ? "default" : "secondary"} className="text-xs">
+                        <Badge
+                          variant={comment.profiles.is_verified ? "default" : "secondary"}
+                          className="text-xs shrink-0 bg-accent text-accent-foreground"
+                        >
                           {comment.profiles.is_verified ? "✓" : "!"}
                         </Badge>
                       )}
                     </div>
                   </Link>
-                  <p className="text-sm mt-2">{comment.content}</p>
+                  <p className="text-xs md:text-sm mt-2 leading-relaxed">{comment.content}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                   </p>
